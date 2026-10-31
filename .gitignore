@@ -1,0 +1,10 @@
+# Secretos: NUNCA subir el token a GitHub
+.env
+.streamlit/secrets.toml
+
+__pycache__/
+*.py[cod]
+.venv/
+venv/
+.pytest_cache/
+.DS_Store
