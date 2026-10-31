@@ -1,0 +1,11 @@
+# Bases de datos que aparecen en el selector del dashboard.
+# Nombre visible = ID de la base de datos (o su URL de Notion).
+# Los IDs no son secretos: sin el token no dan acceso a nada.
+# Todas cuelgan de la página «🏅 Oposiciones».
+[databases]
+"Sprints" = "2e8152fcbdf081f8b749e4f1030a2dff"
+"Proyectos" = "2e8152fcbdf081cd9f37c681f1c84898"
+"Objetivos" = "2e8152fcbdf080aba848ce35ddbe4aac"
+"Planes Mensuales" = "2ef152fcbdf0804fb118d97fddf08b83"
+"Planes Semanales" = "2ef152fcbdf08034a97bfb25c69e7738"
+"Calendario" = "14a138c4bc0549cab0677c7a761881ed"

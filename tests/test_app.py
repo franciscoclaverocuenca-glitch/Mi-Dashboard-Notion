@@ -77,3 +77,30 @@ def test_sample_data_all_charts():
         assert line_chart(df, "Fecha", "Horas", "mean", freq, color="Estado", cumulative=True).data
     assert bar_chart(df, "Categoría", None, "count", color="Etiquetas", horizontal=True, top_n=3).data
     assert pie_chart(df, "Etiquetas", "Importe (€)", "sum", top_n=3).data
+
+
+def test_unsupported_and_rollup_properties():
+    page = {
+        "properties": {
+            "Task Name": {"type": "title", "title": [{"plain_text": "T"}]},
+            "Crear Sprint": {"type": "button", "button": {}},
+            "Worked time": {"type": "rollup", "rollup": {"type": "array", "array": [
+                {"type": "formula", "formula": {"type": "number", "number": 1.5}},
+                {"type": "formula", "formula": {"type": "number", "number": 2}},
+            ]}},
+            "Project": {"type": "relation", "relation": [{"id": "x"}], "has_more": False},
+        }
+    }
+    df = pages_to_dataframe([page])
+    assert df.loc[0, "Worked time"] == 3.5
+    assert df.loc[0, "Project"] == 1
+
+
+def test_databases_toml_ids_valid():
+    import tomllib
+    from pathlib import Path
+
+    dbs = tomllib.loads((Path(__file__).parents[1] / "databases.toml").read_text())["databases"]
+    assert len(dbs) == 6
+    for value in dbs.values():
+        assert len(extract_database_id(value)) == 32

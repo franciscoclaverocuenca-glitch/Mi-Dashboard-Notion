@@ -28,6 +28,7 @@ Mi-Dashboard-Notion/
 │   ├── config.toml                # Tema de la app
 │   └── secrets.toml.example       # Plantilla de secretos (copiar a secrets.toml)
 ├── .env.example                   # Alternativa: plantilla de variables de entorno
+├── databases.toml                 # Bases de datos del selector (nombre = ID)
 ├── requirements.txt               # Dependencias de la aplicación
 ├── requirements-dev.txt           # Dependencias + pytest
 └── README.md
@@ -68,6 +69,12 @@ https://www.notion.so/miworkspace/a1b2c3d4e5f60718293a4b5c6d7e8f90?v=0f1e2d3c4b5
 ```
 
 El **ID** son los **32 caracteres** que van **antes de `?v=`**. Puedes pegar en la app tanto el ID como la URL completa: la aplicación extrae el ID automáticamente.
+
+### Bases de datos ya configuradas
+
+El archivo [`databases.toml`](databases.toml) ya incluye las seis bases de datos de la página **🏅 Oposiciones**: Sprints, Proyectos, Objetivos, Planes Mensuales, Planes Semanales y Calendario. Se eligen en el desplegable **«Base de datos»** de la barra lateral. Para añadir otra, escribe una línea `"Nombre" = "ID"` en ese archivo, o elige «Otra (pegar ID o URL)…» en la app.
+
+> 💡 Si conectas la integración a la página **🏅 Oposiciones** (Paso 2), todas las bases de datos que contiene quedan compartidas de una vez.
 
 ## ⚙️ Paso 4 · Configurar el token en el proyecto
 

@@ -6,6 +6,8 @@ Ejecutar con:  streamlit run app.py
 from __future__ import annotations
 
 import os
+import tomllib
+from pathlib import Path
 
 import pandas as pd
 import streamlit as st
@@ -38,6 +40,18 @@ def get_setting(name: str) -> str:
     return os.getenv(name, "")
 
 
+def configured_databases() -> dict[str, str]:
+    """Bases de datos disponibles: databases.toml + NOTION_DATABASE_ID (si existe)."""
+    dbs: dict[str, str] = {}
+    path = Path(__file__).parent / "databases.toml"
+    if path.exists():
+        dbs.update(tomllib.loads(path.read_text(encoding="utf-8")).get("databases", {}))
+    extra = get_setting("NOTION_DATABASE_ID")
+    if extra:
+        dbs.setdefault("Base de datos configurada", extra)
+    return dbs
+
+
 @st.cache_data(ttl=600, show_spinner="Descargando datos de Notion…")
 def load_notion(token: str, database_id: str) -> tuple[str, pd.DataFrame]:
     client = NotionClient(token)
@@ -58,14 +72,18 @@ def sidebar_connection() -> tuple[str, pd.DataFrame] | None:
         "Token de integración", value=get_setting("NOTION_TOKEN"), type="password",
         help="Empieza por 'ntn_' (o 'secret_' en integraciones antiguas).",
     )
-    db_input = st.sidebar.text_input(
-        "ID o URL de la base de datos", value=get_setting("NOTION_DATABASE_ID"),
-    )
+    dbs = configured_databases()
+    options = list(dbs) + ["Otra (pegar ID o URL)…"]
+    choice = st.sidebar.selectbox("Base de datos", options)
+    if choice in dbs:
+        db_input = dbs[choice]
+    else:
+        db_input = st.sidebar.text_input("ID o URL de la base de datos")
     if st.sidebar.button("🔄 Recargar datos", width="stretch"):
         load_notion.clear()
 
     if not token or not db_input:
-        st.info("Introduce el token y el ID de la base de datos en la barra lateral (ver README.md).")
+        st.info("Introduce el token de integración en la barra lateral (ver README.md).")
         return None
     try:
         return load_notion(token, extract_database_id(db_input))
