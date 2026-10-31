@@ -12,10 +12,11 @@ from pathlib import Path
 import pandas as pd
 import streamlit as st
 
+from src import progress
 from src.charts import AGGREGATIONS, FREQUENCIES, bar_chart, line_chart, pie_chart
 from src.notion_api import NotionAPIError, NotionClient, extract_database_id
 from src.parser import classify_columns, pages_to_dataframe
-from src.sample_data import sample_dataframe
+from src.sample_data import sample_dataframe, sample_sprints
 
 try:  # python-dotenv es opcional: permite usar un archivo .env en local
     from dotenv import load_dotenv
@@ -66,7 +67,9 @@ def sidebar_connection() -> tuple[str, pd.DataFrame] | None:
     demo = st.sidebar.toggle("Usar datos de ejemplo", value=not get_setting("NOTION_TOKEN"))
     if demo:
         st.sidebar.info("Modo demo: datos ficticios. Desactívalo para usar tu base de datos.")
-        return "Datos de ejemplo", sample_dataframe()
+        if st.sidebar.radio("Ejemplo", ["Sprints (oposiciones)", "Genérico"]) == "Genérico":
+            return "Datos de ejemplo", sample_dataframe()
+        return "Sprints (ejemplo)", sample_sprints()
 
     token = st.sidebar.text_input(
         "Token de integración", value=get_setting("NOTION_TOKEN"), type="password",
@@ -135,6 +138,41 @@ def value_controls(key: str, numeric: list[str]) -> tuple[str | None, str]:
     return value, agg
 
 
+def _fmt(x: float, dec: int = 0) -> str:
+    return f"{x:,.{dec}f}".replace(",", "X").replace(".", ",").replace("X", ".")
+
+
+def progress_tab(df: pd.DataFrame) -> None:
+    today = pd.Timestamp.now().normalize()
+    s = progress.summary(df, today)
+    c = st.columns(4)
+    if s["dias_examen"] is not None:
+        c[0].metric("Días hasta el examen", _fmt(s["dias_examen"]),
+                    help=f"Fecha: {s['examen']:%d/%m/%Y}")
+    c[1].metric("Sesiones hechas", f"{_fmt(s['hechas'])} / {_fmt(s['sesiones'])}", f"{_fmt(s['pct'], 1)} %",
+                delta_color="off", delta_arrow="off", help=f"No incluye {s['congeladas']} sesiones congeladas.")
+    c[2].metric("Horas completadas", f"{_fmt(s['horas_hechas'], 1)} h",
+                f"de {_fmt(s['horas_total'], 1)} h planificadas", delta_color="off", delta_arrow="off")
+    c[3].metric("Sesiones atrasadas", _fmt(s["atrasadas"]), f"{_fmt(s['horas_atrasadas'], 1)} h",
+                delta_color="red" if s["atrasadas"] else "off", delta_arrow="off")
+    if s["sesiones"]:
+        st.progress(min(s["pct"] / 100, 1.0))
+
+    st.plotly_chart(progress.weekly_chart(df, today), width="stretch")
+    left, right = st.columns(2)
+    left.plotly_chart(progress.burnup_chart(df, today), width="stretch")
+    right.plotly_chart(progress.type_chart(df, today), width="stretch")
+
+    late = progress.late_sessions(df, today)
+    with st.expander(f"⏰ Sesiones atrasadas ({len(late)})", expanded=False):
+        if late.empty:
+            st.success("¡Nada atrasado! 🎉")
+        else:
+            st.dataframe(late, width="stretch", hide_index=True,
+                         column_config={"_url": st.column_config.LinkColumn("Abrir en Notion"),
+                                        progress.DATE: st.column_config.DateColumn(format="DD/MM/YYYY")})
+
+
 # --------------------------------------------------------------------------- #
 # Interfaz principal
 # --------------------------------------------------------------------------- #
@@ -158,7 +196,13 @@ def main() -> None:
     for box, col in zip(kpis[1:], cols["numeric"]):
         box.metric(f"Total {col}", f"{data[col].sum():,.2f}".replace(",", "X").replace(".", ",").replace("X", "."))
 
-    tab_bar, tab_line, tab_pie, tab_data = st.tabs(["📊 Barras", "📈 Líneas", "🥧 Sectores", "🗂️ Datos"])
+    names = ["📊 Barras", "📈 Líneas", "🥧 Sectores", "🗂️ Datos"]
+    show_progress = progress.is_available(df)
+    tabs = st.tabs((["🎯 Progreso"] if show_progress else []) + names)
+    if show_progress:
+        with tabs[0]:
+            progress_tab(data)
+    tab_bar, tab_line, tab_pie, tab_data = tabs[-4:]
 
     with tab_bar:
         if not cols["categorical"]:

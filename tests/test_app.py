@@ -104,3 +104,19 @@ def test_databases_toml_ids_valid():
     assert len(dbs) == 6
     for value in dbs.values():
         assert len(extract_database_id(value)) == 32
+
+
+def test_progress_panel():
+    from src import progress
+    from src.sample_data import sample_sprints
+
+    df = sample_sprints()
+    assert progress.is_available(df)
+    today = pd.Timestamp.now().normalize()
+    s = progress.summary(df, today)
+    assert 0 < s["hechas"] < s["sesiones"]
+    assert s["dias_examen"] > 200
+    assert s["atrasadas"] == len(progress.late_sessions(df, today))
+    for fig in (progress.weekly_chart(df, today), progress.burnup_chart(df, today), progress.type_chart(df, today)):
+        assert fig.data
+    assert not progress.is_available(sample_dataframe())
